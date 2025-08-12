@@ -1,0 +1,43 @@
+services:
+  bookstack_db:
+    image: lscr.io/linuxserver/mariadb:11.4.5
+    container_name: bookstack_db
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+      - MYSQL_ROOT_PASSWORD=BitteAendern_Root!
+      - MYSQL_DATABASE=bookstack
+      - MYSQL_USER=bookstack
+      - MYSQL_PASSWORD=BitteAendern_DB!
+    volumes:
+      - ./bookstack_db_data:/config
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  bookstack:
+    image: lscr.io/linuxserver/bookstack:version-v25.07.1
+    container_name: bookstack
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+      - APP_URL=http://172.18.100.235:8099
+      - APP_KEY=base64:DEIN_APP_KEY_HIER
+      - DB_HOST=bookstack_db
+      - DB_PORT=3306
+      - DB_DATABASE=bookstack
+      - DB_USERNAME=bookstack
+      - DB_PASSWORD=BitteAendern_DB!
+    volumes:
+      - ./bookstack_app_data:/config
+    ports:
+      - "8099:80"
+    depends_on:
+      bookstack_db:
+        condition: service_healthy
+    restart: unless-stopped
