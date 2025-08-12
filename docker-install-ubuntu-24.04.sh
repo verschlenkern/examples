@@ -66,7 +66,7 @@ apt-get install -y --no-install-recommends \
   ca-certificates curl
 
 # Optional, aber oft hilfreich
-apt-get install -y --no-install-recommends gnupg lsb-release
+apt-get install -y --no-install-recommends gnupg gnupg2 lsb-release nano apt-transport-https
 
 # ---------- Docker GPG-Key einrichten ----------
 info "Docker GPG-Key und Repository einrichten …"
@@ -98,3 +98,26 @@ apt-get install -y "${PACKAGES[@]}"
 # ---------- Dienst aktivieren & starten ----------
 info "Dienst docker aktivieren & starten …"
 systemctl enable --now docker
+
+# ---------- Benutzer der docker-Gruppe hinzufügen ----------
+# Ermittelt den Benutzer, der dem 'docker'-Team hinzugefügt werden soll.
+# Falls das Skript mit sudo läuft, wird der ursprüngliche Benutzer (SUDO_USER) genommen, sonst $USER.
+TARGET_USER=${SUDO_USER:-${USER}}
+# Prüft, ob der Benutzer existiert (id -u liefert UID)
+if id -u "$TARGET_USER" >/dev/null 2>&1; then
+  # Prüft, ob es die Gruppe 'docker' gibt (getent group)
+  if getent group docker >/dev/null 2>&1; then
+    # Prüft, ob der Benutzer schon Mitglied der Gruppe 'docker' ist
+    if id -nG "$TARGET_USER" | grep -qw docker; then
+      info "Benutzer $TARGET_USER ist bereits in der Gruppe 'docker'."
+    else
+      # Fügt den Benutzer zur docker-Gruppe hinzu (usermod -aG)
+      usermod -aG docker "$TARGET_USER"
+      success "Benutzer $TARGET_USER zur Gruppe 'docker' hinzugefügt. (Neu anmelden, damit es aktiv wird.)"
+    fi
+  else
+    warn "Gruppe 'docker' existiert nicht (unerwartet). Wurde Docker korrekt installiert?"
+  fi
+else
+  warn "Konnte Zielbenutzer nicht ermitteln. Überspringe Gruppenanpassung."
+fi
